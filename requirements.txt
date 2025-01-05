@@ -1,1 +1,8 @@
 tkintermapview
+requests
+gtfs-realtime-bindings
+pandas
+matplotlib
+geopy
+sqlalchemy
+pymysql
