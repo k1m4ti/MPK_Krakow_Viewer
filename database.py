@@ -35,11 +35,12 @@ def transform_data():
     with lock:
         # filtracja tylko tras w "trakcie przejazdu"
         data['trip_updates'] = data['trip_updates'][data['trip_updates']['trip_id'].isin(data['vehicle_positions']['trip_id'])]
-        data['trip_updates'] = data['trip_updates'].sort_values(by=['trip_id', 'arrival_time', 'departure_time'])
+        data['trip_updates'] = data['trip_updates'].sort_values(by=['trip_id', 'departure_time'])
 
+        
         # połączenie planowanego przasu przyjazdu z rzeczywistym
         data['trip_updates'] = pd.merge(data['stop_times'], data['trip_updates'], on=['trip_id', 'stop_id'], suffixes=('_planned', '_irl'))
-        data['trip_updates']['delay'] = (data['trip_updates']['arrival_time_irl'] - data['trip_updates']['arrival_time_planned']).dt.total_seconds()
+        data['trip_updates']['delay'] = (data['trip_updates']['departure_time_irl'] - data['trip_updates']['departure_time_planned']).dt.total_seconds()
 
         # obliczamy odległości pojazdów od przystanku
         data['vehicle_positions'] = pd.merge(data['vehicle_positions'], data['stops'], on='stop_id')
@@ -55,8 +56,14 @@ def transform_data():
 def data_to_sql():
     global data
     with lock:
-        for name, df in data.items():
-            df.to_sql(name, con=engine, if_exists='replace', index=False)
+        data['trip_updates'][['trip_id', 'stop_id', 'departure_time_planned', 'departure_time_irl', 'delay']].to_sql('trip_updates', con=engine, if_exists='replace', index=False)
+        # zmienić na dopisywanie
+        data['trip_updates'][['trip_id', 'stop_id', 'delay', 'timestamp']].to_sql('delays', con=engine, if_exists='append', index=False)
+        data['vehicle_positions'][['trip_id', 'license_plate', 'latitude', 'longitude', 'stop_name', 'distance']].to_sql('vehicle_positions', con=engine, if_exists='replace', index=False)
+        data['stops'].to_sql('stops', con=engine, if_exists='replace', index=False)
+        data['routes'].to_sql('routes', con=engine, if_exists='replace', index=False)
+        data['trips'].to_sql('trips', con=engine, if_exists='replace', index=False)
+
         print('Dane zostały zapisane do bazy danych')
 
 # od pobrania danych do zapisania ich w bazie
@@ -74,7 +81,12 @@ def load_transform_store():
         thread.join()
 
 if __name__ == '__main__':
-    czas_wykonania = timeit.timeit(load_transform_store, number=1)
-    print(f"Czas wykonania: {czas_wykonania} sekund")
+    # czas_wykonania = timeit.timeit(load_transform_store, number=1)
+    # print(f"Czas wykonania: {czas_wykonania} sekund")
     # load_transform_store()
-
+    i = 0
+    while True:
+        load_transform_store()
+        time.sleep(6)
+        print(i)
+        i += 1

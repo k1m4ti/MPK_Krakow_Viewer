@@ -52,13 +52,12 @@ def trip_update_to_df(feed: gtfs_realtime_pb2.FeedMessage, result: dict):
         if trip_update:
             for stop_time_update in trip_update.stop_time_update:
                 trip_updates.append({
-                    "trip_id": trip_update.trip.trip_id,
-                    "stop_id": stop_time_update.stop_id,
-                    "arrival_time": datetime.fromtimestamp(
-                        stop_time_update.arrival.time) if stop_time_update.HasField("arrival") else None,
-                    "departure_time": datetime.fromtimestamp(
+                    'trip_id': trip_update.trip.trip_id,
+                    'stop_id': stop_time_update.stop_id,
+                    'departure_time': datetime.fromtimestamp(
                         stop_time_update.departure.time) if stop_time_update.HasField(
-                        "departure") else None
+                        'departure') else None,
+                    'timestamp': datetime.fromtimestamp(feed.header.timestamp)
                 })
     result['trip_updates'] = pd.DataFrame(trip_updates)
 
@@ -95,8 +94,8 @@ def schedule_to_df(name: str, path: str, result: dict):
         elif file == 'stop_times.txt':
             result['stop_times'] = pd.read_csv(file_path, sep=',')[
                 ['trip_id', 'arrival_time', 'departure_time', 'stop_id']]
-            result['stop_times']['arrival_time'] = pd.to_datetime(
-                result['stop_times']['arrival_time'],
+            result['stop_times']['departure_time'] = pd.to_datetime(
+                result['stop_times']['departure_time'],
                 format='%H:%M:%S',
                 errors='coerce').apply(
                 lambda x: x.replace(year=datetime.now().year, month=datetime.now().month, day=datetime.now().day)
@@ -146,8 +145,6 @@ def download_realtime_info() -> dict:
         for thread in proccesing_threads:
             thread.join()
 
-        processing_results['timestamp'] = pd.DataFrame({'timestamp': [datetime.fromtimestamp(
-            download_results['trip_updates'].header.timestamp).strftime('%Y-%m-%d %H:%M:%S')]})
     return processing_results
 
 
